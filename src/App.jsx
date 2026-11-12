@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Heart, Play, BookOpen, Settings, CheckCircle2, XCircle, ChevronRight, RotateCcw, Home, Award, Volume2, ArrowLeft } from 'lucide-react';
+import { Heart, Play, BookOpen, Settings, CheckCircle2, XCircle, ChevronRight, ChevronLeft, RotateCcw, Home, Award, Volume2, ArrowLeft, Layers } from 'lucide-react';
 import { GAME_DATA, META } from './gameData.js';
 import { VOCAB_UNITS } from './kanjiData.js';
 import { VOCAB_LESSONS } from './data.js';
@@ -19,34 +19,28 @@ const speak = (t) => {
   speechSynthesis.cancel(); speechSynthesis.speak(u);
 };
 
-// Hàm tạo âm thanh Đúng/Sai không cần file MP3 (Dùng Web Audio API)
 const playSound = (isCorrect) => {
   if (!window.AudioContext && !window.webkitAudioContext) return;
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
+    osc.connect(gain); gain.connect(ctx.destination);
     
     if (isCorrect) {
-      // Âm thanh Ting Ting (Đúng)
       osc.type = 'sine';
       osc.frequency.setValueAtTime(600, ctx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
       gain.gain.setValueAtTime(0.3, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.3);
+      osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.3);
     } else {
-      // Âm thanh Buzzer (Sai)
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(250, ctx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.2);
       gain.gain.setValueAtTime(0.3, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.2);
+      osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.2);
     }
   } catch (e) { console.log(e); }
 };
@@ -59,80 +53,146 @@ const Toggle = ({ label, on, set }) => (
   </button>
 );
 
-const Shell = ({ title, onBack, children }) => (
+const Shell = ({ title, onBack, children, fullWidth = false }) => (
   <div className="min-h-screen bg-pastel-pink flex flex-col items-center p-4">
-    <div className="w-full max-w-3xl">
+    <div className={`w-full ${fullWidth ? 'max-w-5xl' : 'max-w-3xl'}`}>
       <button onClick={onBack} className={`${btn} bg-white text-pink-600 px-4 py-2 mb-4 shadow-sm`}><ArrowLeft size={18} /> Trang chủ</button>
       <h2 className="text-2xl font-extrabold text-gray-800 mb-4">{title}</h2>{children}
     </div>
   </div>
 );
 
-// GIAO DIỆN THẺ HỌC (FLASHCARD)
-const VocabCard = ({ w, hide }) => {
-  const [flipped, setFlipped] = useState(!hide);
-  useEffect(() => { setFlipped(!hide); }, [hide]);
+// GIAO DIỆN CHẾ ĐỘ DANH SÁCH BÌNH THƯỜNG
+const VocabListCard = ({ w }) => {
   const [hv, kanji, kana, vi] = w;
   const say = (kana || kanji).split(/[・／]/)[0];
-  
   return (
-    <div 
-      onClick={() => hide && setFlipped(!flipped)}
-      className={`bg-white rounded-2xl p-5 shadow-sm border-2 border-pink-100 flex flex-col transition-all duration-300 ${hide ? 'cursor-pointer hover:shadow-md hover:-translate-y-1 active:scale-95' : ''}`}
-    >
+    <div className="bg-white rounded-2xl p-4 shadow-sm border border-pink-100 flex flex-col gap-1 hover:border-pink-300 transition-colors">
       <div className="flex items-start justify-between gap-2">
-        <div className="jp text-3xl font-bold text-gray-800">{kanji}</div>
-        <button onClick={(e) => { e.stopPropagation(); speak(say); }} aria-label={`Nghe ${say}`} className="p-2 rounded-full bg-pink-50 text-pink-600 hover:bg-pink-100 shrink-0">
-          <Volume2 size={20} />
-        </button>
+        <div className="jp text-2xl font-bold text-gray-800 leading-tight">{kanji}</div>
+        <button onClick={() => speak(say)} aria-label="Nghe" className="p-2 rounded-full bg-pink-50 text-pink-500 hover:bg-pink-100 shrink-0"><Volume2 size={18} /></button>
       </div>
+      {kana && <div className="jp text-pink-500 font-semibold">{kana}</div>}
+      {hv && <span className="inline-block bg-amber-100 text-pastel-brown text-xs font-bold px-2 py-0.5 rounded-full mb-1 w-max">{hv}</span>}
+      <div className="text-sm text-gray-600">{vi}</div>
+    </div>
+  );
+};
+
+// GIAO DIỆN FLASHCARD QUIZLET STYLE (Đã sửa lỗi mượt & bôi đen chữ)
+const QuizletFlashcard = ({ w, onNext, onPrev, current, total }) => {
+  const [flipped, setFlipped] = useState(false);
+  const [hv, kanji, kana, vi] = w;
+  const say = (kana || kanji).split(/[・／]/)[0];
+
+  const handleFlip = () => {
+    setFlipped(!flipped);
+    if (!flipped) {
+      // Delay nhẹ để UI xoay mượt trước, không bị giật do hàm đọc âm thanh chặn
+      setTimeout(() => speak(say), 100); 
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center w-full max-w-4xl mx-auto mt-4 select-none">
       
-      {/* Mặt sau của Flashcard */}
-      <div className={`transition-all duration-300 origin-top ${!flipped ? 'opacity-0 h-0 scale-y-0 overflow-hidden' : 'opacity-100 h-auto scale-y-100 mt-2'}`}>
-        <div className="w-full h-px bg-pink-50 mb-3"></div>
-        {kana && <div className="jp text-pink-500 font-semibold text-lg mb-1">{kana}</div>}
-        {hv && <span className="inline-block bg-amber-100 text-pastel-brown text-xs font-bold px-2 py-0.5 rounded-full mb-2">{hv}</span>}
-        <div className="text-gray-600 font-medium">{vi}</div>
+      {/* Thẻ 3D */}
+      <div className="relative w-full h-80 sm:h-96 [perspective:2000px] cursor-pointer" onClick={handleFlip}>
+        
+        {/* Dùng transition-transform để tăng tốc độ phần cứng, loại bỏ group-hover gây lỗi */}
+        <div className={`relative w-full h-full transition-transform duration-700 ease-in-out [transform-style:preserve-3d] ${flipped ? '[transform:rotateY(180deg)]' : ''} shadow-md hover:shadow-xl rounded-3xl`}>
+          
+          {/* Mặt trước (Chữ Nhật) */}
+          <div className="absolute inset-0 [backface-visibility:hidden] bg-white rounded-3xl p-8 border-2 border-gray-100 flex flex-col items-center justify-center overflow-hidden">
+            <button onClick={(e) => { e.stopPropagation(); speak(say); }} className="absolute top-4 right-4 p-3 rounded-full text-pink-500 hover:bg-pink-50 transition-colors"><Volume2 size={24} /></button>
+            <div className="jp text-5xl sm:text-7xl font-bold text-gray-800 text-center leading-normal tracking-wide px-4">{kanji}</div>
+            <div className="absolute bottom-6 text-gray-400 text-sm font-semibold opacity-60">👆 Chạm thẻ để lật</div>
+          </div>
+
+          {/* Mặt sau (Nghĩa) */}
+          <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] bg-pink-50 rounded-3xl p-8 border-2 border-pink-200 flex flex-col items-center justify-center text-center overflow-hidden">
+            <button onClick={(e) => { e.stopPropagation(); speak(say); }} className="absolute top-4 right-4 p-3 rounded-full text-pink-500 hover:bg-pink-100 transition-colors"><Volume2 size={24} /></button>
+            {kana && <div className="jp text-3xl sm:text-5xl text-pink-600 font-bold mb-6 leading-relaxed">{kana}</div>}
+            {hv && <span className="inline-block bg-white text-pastel-brown text-sm font-bold px-4 py-1.5 rounded-full mb-4 shadow-sm border border-amber-100">{hv}</span>}
+            <div className="text-gray-800 font-medium text-xl sm:text-3xl px-6 leading-relaxed">{vi}</div>
+          </div>
+          
+        </div>
       </div>
 
-      {!flipped && (
-        <div className="text-center text-gray-400 text-sm mt-3 pt-3 border-t border-dashed border-gray-200 italic animate-pulse">
-          👆 Chạm để lật thẻ
-        </div>
-      )}
+      {/* Cụm điều khiển (Lùi / Tới) */}
+      <div className="flex items-center justify-between w-full max-w-md mt-10 gap-6">
+        <button 
+          onClick={(e) => { e.stopPropagation(); onPrev(); }} 
+          disabled={current === 0}
+          className={`p-4 rounded-full flex items-center justify-center transition-all ${current === 0 ? 'text-gray-300 bg-gray-100 cursor-not-allowed' : 'text-pink-600 bg-white shadow-md hover:bg-pink-50 hover:shadow-lg active:scale-95'}`}
+        >
+          <ChevronLeft size={28} strokeWidth={3} />
+        </button>
+
+        <span className="font-bold text-gray-600 text-lg tracking-widest">{current + 1} / {total}</span>
+
+        <button 
+          onClick={(e) => { e.stopPropagation(); onNext(); }} 
+          disabled={current === total - 1}
+          className={`p-4 rounded-full flex items-center justify-center transition-all ${current === total - 1 ? 'text-gray-300 bg-gray-100 cursor-not-allowed' : 'text-pink-600 bg-white shadow-md hover:bg-pink-50 hover:shadow-lg active:scale-95'}`}
+        >
+          <ChevronRight size={28} strokeWidth={3} />
+        </button>
+      </div>
     </div>
   );
 };
 
 export default function App() {
-  const [screen, setScreen] = useState('start');
-  const [deck, setDeck] = useState(GAME_DATA);
-  const [i, setI] = useState(0);
-  const [score, setScore] = useState(0);
-  const [combo, setCombo] = useState(0);
-  const [picked, setPicked] = useState(null);
-  const [wrong, setWrong] = useState([]);
+  const [screen, setScreen] = useState(() => store.get('jp_screen', 'start'));
+  const [deck, setDeck] = useState(() => store.get('jp_deck', GAME_DATA));
+  const [i, setI] = useState(() => store.get('jp_i', 0));
+  const [score, setScore] = useState(() => store.get('jp_score', 0));
+  const [combo, setCombo] = useState(() => store.get('jp_combo', 0));
+  const [picked, setPicked] = useState(() => store.get('jp_picked', null));
+  const [wrong, setWrong] = useState(() => store.get('jp_wrong', []));
   const [high, setHigh] = useState(() => store.get('japaneseGameHighScore', 0));
   const [sound, setSound] = useState(() => store.get('jp_sound', true));
   const [showVi, setShowVi] = useState(() => store.get('jp_showVi', true));
   
-  // Trạng thái cho phần Từ Vựng
-  const [unit, setUnit] = useState(0);
-  const [vtab, setVtab] = useState('lesson');
+  const [unit, setUnit] = useState(() => store.get('jp_unit', 0));
+  const [vtab, setVtab] = useState(() => store.get('jp_vtab', 'lesson'));
+  const [flashcardMode, setFlashcardMode] = useState(() => store.get('jp_flashcard', false));
+  const [cardIndex, setCardIndex] = useState(() => store.get('jp_cardIndex', 0)); 
+
+  useEffect(() => {
+    store.set('jp_screen', screen);
+    store.set('jp_deck', deck);
+    store.set('jp_i', i);
+    store.set('jp_score', score);
+    store.set('jp_combo', combo);
+    store.set('jp_picked', picked);
+    store.set('jp_wrong', wrong);
+    store.set('jp_unit', unit);
+    store.set('jp_vtab', vtab);
+    store.set('jp_flashcard', flashcardMode);
+    store.set('jp_cardIndex', cardIndex);
+  }, [screen, deck, i, score, combo, picked, wrong, unit, vtab, flashcardMode, cardIndex]);
+
   const units = vtab === 'kanji' ? VOCAB_UNITS : VOCAB_LESSONS;
-  const switchTab = (t) => { setVtab(t); setUnit(0); setHide(false); };
-  const [hide, setHide] = useState(false);
+  const switchTab = (t) => { setVtab(t); setUnit(0); setCardIndex(0); };
 
-  const q = deck[i];
+  const q = deck[i] || GAME_DATA[0];
   const home = () => setScreen('start');
-  useEffect(() => { if (screen === 'play' && sound) speak(q.dialogue); }, [screen, i]);
+  
+  useEffect(() => { if (screen === 'play' && sound && !picked) speak(q.dialogue); }, [screen, i]);
 
-  const start = () => { setDeck(makeDeck()); setI(0); setScore(0); setCombo(0); setPicked(null); setWrong([]); setScreen('play'); };
+  const start = () => { 
+    setDeck(makeDeck()); 
+    setI(0); setScore(0); setCombo(0); setPicked(null); setWrong([]); 
+    setScreen('play'); 
+  };
   
   const choose = (o) => {
     if (picked) return;
     setPicked(o);
-    playSound(o.isCorrect); // Gọi âm thanh tại đây
+    playSound(o.isCorrect); 
     if (o.isCorrect) { 
       setScore((s) => s + 100 + combo * 10); 
       setCombo((c) => c + 1); 
@@ -149,25 +209,40 @@ export default function App() {
   };
   const setS = (k, fn) => (v) => { fn(v); store.set(k, v); };
 
-  // --- TỪ VỰNG & KANJI FLASHCARD ---
+  // --- MÀN HÌNH TỪ VỰNG ---
   if (screen === 'vocab') return (
-    <Shell title="Thẻ Học Tiếng Nhật" onBack={home}>
+    <Shell title="Thẻ Học Quizlet" onBack={home} fullWidth={flashcardMode}>
       <div className="flex gap-2 mb-3">
         {[['lesson', 'Từ vựng theo bài'], ['kanji', 'Hán tự Kanji']].map(([k, label]) => (
           <button key={k} onClick={() => switchTab(k)} className={`${btn} px-5 py-2.5 text-sm ${vtab === k ? 'bg-gray-800 text-white shadow-md' : 'bg-white text-gray-700 border border-gray-200'}`}>{label}</button>
         ))}
       </div>
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        <div className="flex gap-2 overflow-x-auto pb-1 max-w-[60%] hide-scrollbar">
+      <div className="flex flex-wrap items-center gap-2 mb-6">
+        <div className="flex gap-2 overflow-x-auto pb-1 max-w-[55%] hide-scrollbar">
           {units.map((u, n) => (
-            <button key={u.unit} onClick={() => setUnit(n)} className={`${btn} px-4 py-2 text-sm whitespace-nowrap ${unit === n ? 'bg-pink-400 text-white shadow-md' : 'bg-white text-pink-600 border border-pink-100'}`}>{u.unit} ({u.words.length})</button>
+            <button key={u.unit} onClick={() => { setUnit(n); setCardIndex(0); }} className={`${btn} px-4 py-2 text-sm whitespace-nowrap ${unit === n ? 'bg-pink-400 text-white shadow-md' : 'bg-white text-pink-600 border border-pink-100'}`}>{u.unit} ({u.words.length})</button>
           ))}
         </div>
-        <button onClick={() => setHide(!hide)} aria-pressed={hide} className={`${btn} px-4 py-2 text-sm ml-auto ${hide ? 'bg-green-500 text-white shadow-md' : 'bg-white text-gray-700 border border-gray-200'}`}>{hide ? 'Mở lại tất cả' : 'Bật chế độ lật thẻ'}</button>
+        <button onClick={() => setFlashcardMode(!flashcardMode)} className={`${btn} px-4 py-2 text-sm ml-auto ${flashcardMode ? 'bg-green-500 text-white shadow-md' : 'bg-white text-gray-700 border border-gray-200'}`}>
+          {flashcardMode ? 'Xem Danh Sách' : <><Layers size={16} /> Bật chế độ Lật Thẻ</>}
+        </button>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {units[unit].words.map((w, n) => <VocabCard key={vtab + unit + n} w={w} hide={hide} />)}
-      </div>
+      
+      {flashcardMode ? (
+        // Truyền key={cardIndex} để React xóa thẻ cũ và tạo thẻ mới ngay lập tức khi bấm Next/Prev
+        <QuizletFlashcard 
+          key={cardIndex} 
+          w={units[unit]?.words[cardIndex]} 
+          current={cardIndex} 
+          total={units[unit]?.words.length}
+          onNext={() => setCardIndex(c => Math.min(c + 1, units[unit]?.words.length - 1))}
+          onPrev={() => setCardIndex(c => Math.max(c - 1, 0))}
+        />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {units[unit]?.words.map((w, n) => <VocabListCard key={vtab + unit + n} w={w} />)}
+        </div>
+      )}
     </Shell>
   );
 
@@ -196,11 +271,14 @@ export default function App() {
           <h2 className="text-lg text-gray-500 mb-2 font-semibold">My First Visit to My Japanese Lover's Home</h2>
           <p className="text-sm text-pink-500 font-bold mb-6">Kỷ lục: {high}</p>
           <div className="flex flex-col gap-4">
-            <button onClick={start} className={`${btn} w-full bg-pink-400 hover:bg-pink-500 text-white py-4 shadow-lg shadow-pink-200`}><Play fill="currentColor" /> Bắt đầu ngay</button>
+            <button onClick={start} className={`${btn} w-full bg-pink-400 hover:bg-pink-500 text-white py-4 shadow-lg shadow-pink-200`}><Play fill="currentColor" /> {score > 0 ? 'Bắt đầu ván mới' : 'Bắt đầu ngay'}</button>
             <div className="grid grid-cols-2 gap-4">
               <button onClick={() => setScreen('vocab')} className={`${btn} bg-pastel-beige hover:bg-amber-100 text-pastel-brown py-3`}><BookOpen size={18} /> Thẻ học</button>
               <button onClick={() => setScreen('settings')} className={`${btn} bg-pastel-beige hover:bg-amber-100 text-pastel-brown py-3`}><Settings size={18} /> Cài đặt</button>
             </div>
+            {score > 0 && deck.length > 0 && (
+               <button onClick={() => setScreen('play')} className={`${btn} w-full bg-green-500 hover:bg-green-600 text-white py-3 shadow-md mt-2`}>Tiếp tục màn chơi đang dở</button>
+            )}
           </div>
         </div>
       </div>
@@ -239,7 +317,7 @@ export default function App() {
             </div>)}
           <div className="flex gap-4">
             <button onClick={start} className={`${btn} flex-1 bg-pink-400 hover:bg-pink-500 text-white py-3`}><RotateCcw size={18} /> Chơi lại</button>
-            <button onClick={home} className={`${btn} flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3`}><Home size={18} /> Trang chủ</button>
+            <button onClick={() => { setScore(0); home(); }} className={`${btn} flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3`}><Home size={18} /> Trang chủ</button>
           </div>
         </div>
       </div>
@@ -254,6 +332,7 @@ export default function App() {
       <div className="w-full max-w-4xl h-[100dvh] sm:h-[800px] sm:max-h-[95vh] bg-pastel-rose relative overflow-hidden sm:rounded-3xl shadow-2xl flex flex-col">
         <div className="absolute top-0 inset-x-0 z-20 bg-gradient-to-b from-black/40 to-transparent p-4">
           <div className="flex justify-between items-center">
+            <button onClick={home} className="bg-white/90 p-1.5 rounded-full text-gray-700 shadow hover:bg-pink-50" aria-label="Về trang chủ"><Home size={20} /></button>
             <div className="flex gap-2 items-center">
               <div className="bg-white/90 px-3 py-1 rounded-full text-sm font-bold text-pink-600 shadow">Điểm: {score}</div>
               {combo > 1 && <div className="bg-orange-400 text-white px-3 py-1 rounded-full text-sm font-bold shadow animate-pulse">Combo x{combo}!</div>}
