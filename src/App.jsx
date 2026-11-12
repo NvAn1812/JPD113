@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Heart, Play, BookOpen, Settings, CheckCircle2, XCircle, ChevronRight, RotateCcw, Home, Award, Volume2, ArrowLeft } from 'lucide-react';
-import { GAME_DATA, META, VOCAB_UNITS } from './data.js';
+import { GAME_DATA, META } from './gameData.js';
+import { VOCAB_UNITS } from './kanjiData.js';
+import { VOCAB_LESSONS } from './data.js';
 import { Scene, Char, whoLabel } from './art.jsx';
 
 const store = {
@@ -12,7 +14,7 @@ const shuffle = (a) => { const r = [...a]; for (let i = r.length - 1; i > 0; i--
 const makeDeck = () => GAME_DATA.map((q) => ({ ...q, options: shuffle(q.options).map((o, i) => ({ ...o, id: 'ABCD'[i] })) }));
 const speak = (t) => {
   if (!('speechSynthesis' in window)) return;
-  const u = new SpeechSynthesisUtterance(t.replace(/[「」（）()]/g, '')); u.lang = 'ja-JP'; u.rate = 0.9;
+  const u = new SpeechSynthesisUtterance(t.replace(/[「」（）()～]/g, '')); u.lang = 'ja-JP'; u.rate = 0.9;
   speechSynthesis.cancel(); speechSynthesis.speak(u);
 };
 const btn = 'font-bold rounded-2xl flex items-center justify-center gap-2 transition-colors';
@@ -32,20 +34,21 @@ const Shell = ({ title, onBack, children }) => (
   </div>
 );
 
-// Thẻ từ vựng: [Hán Việt, Kanji, Hiragana, Nghĩa]
+// Thẻ từ vựng: [Hán Việt / Mục, Từ, Cách đọc, Nghĩa]
 const VocabCard = ({ w, hide }) => {
   const [open, setOpen] = useState(false);
   const [hv, kanji, kana, vi] = w;
   const covered = hide && !open;
+  const say = (kana || kanji).split(/[・／]/)[0];
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm border border-pink-100 flex flex-col gap-1">
       <div className="flex items-start justify-between gap-2">
         <div className="jp text-3xl font-bold text-gray-800 leading-tight">{kanji}</div>
-        <button onClick={() => speak(kana.split('・')[0])} aria-label={`Nghe ${kana}`} className="p-2 rounded-full bg-pink-100 text-pink-600 hover:bg-pink-200 shrink-0"><Volume2 size={18} /></button>
+        <button onClick={() => speak(say)} aria-label={`Nghe ${say}`} className="p-2 rounded-full bg-pink-100 text-pink-600 hover:bg-pink-200 shrink-0"><Volume2 size={18} /></button>
       </div>
-      <div className="jp text-pink-500 font-semibold">{kana}</div>
+      {kana && <div className="jp text-pink-500 font-semibold">{kana}</div>}
       <button onClick={() => setOpen(!open)} className={`text-left transition ${covered ? 'blur-sm select-none' : ''}`} aria-label={covered ? 'Hiện nghĩa' : 'Nghĩa của từ'}>
-        <span className="inline-block bg-amber-100 text-pastel-brown text-xs font-bold px-2 py-0.5 rounded-full mb-1">{hv}</span>
+        {hv && <span className="inline-block bg-amber-100 text-pastel-brown text-xs font-bold px-2 py-0.5 rounded-full mb-1">{hv}</span>}
         <div className="text-sm text-gray-600">{vi}</div>
       </button>
     </div>
@@ -64,6 +67,9 @@ export default function App() {
   const [sound, setSound] = useState(() => store.get('jp_sound', true));
   const [showVi, setShowVi] = useState(() => store.get('jp_showVi', true));
   const [unit, setUnit] = useState(0);
+  const [vtab, setVtab] = useState('lesson');
+  const units = vtab === 'kanji' ? VOCAB_UNITS : VOCAB_LESSONS;
+  const switchTab = (t) => { setVtab(t); setUnit(0); };
   const [hide, setHide] = useState(false);
 
   const q = deck[i];
@@ -84,17 +90,22 @@ export default function App() {
   };
   const setS = (k, fn) => (v) => { fn(v); store.set(k, v); };
 
-  // --- TỪ VỰNG HÁN TỰ ---
+    // --- TỪ VỰNG ---
   if (screen === 'vocab') return (
-    <Shell title="Từ vựng Hán tự" onBack={home}>
+    <Shell title="Từ vựng" onBack={home}>
+      <div className="flex gap-2 mb-3">
+        {[['lesson', 'Từ vựng bài'], ['kanji', 'Hán tự']].map(([k, label]) => (
+          <button key={k} onClick={() => switchTab(k)} className={`${btn} px-5 py-2 text-sm ${vtab === k ? 'bg-gray-800 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}>{label}</button>
+        ))}
+      </div>
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        {VOCAB_UNITS.map((u, n) => (
+        {units.map((u, n) => (
           <button key={u.unit} onClick={() => setUnit(n)} className={`${btn} px-4 py-2 text-sm ${unit === n ? 'bg-pink-400 text-white' : 'bg-white text-pink-600 border border-pink-100'}`}>{u.unit} ({u.words.length})</button>
         ))}
         <button onClick={() => setHide(!hide)} aria-pressed={hide} className={`${btn} px-4 py-2 text-sm ml-auto ${hide ? 'bg-gray-800 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}>{hide ? 'Đang ẩn nghĩa' : 'Ẩn nghĩa để tự kiểm tra'}</button>
       </div>
       <div className="grid sm:grid-cols-2 gap-3">
-        {VOCAB_UNITS[unit].words.map((w) => <VocabCard key={unit + w[1] + w[2]} w={w} hide={hide} />)}
+        {units[unit].words.map((w, n) => <VocabCard key={vtab + unit + n} w={w} hide={hide} />)}
       </div>
     </Shell>
   );
