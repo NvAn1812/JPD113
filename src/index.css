@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Nunito', 'Kosugi Maru', sans-serif;
+  background-color: #FDF2F8;
+  margin: 0;
+}
+.jp { font-family: 'Kosugi Maru', 'Nunito', sans-serif; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
