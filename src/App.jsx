@@ -9,14 +9,48 @@ const store = {
   get: (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
   set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* bỏ qua */ } },
 };
+
 const shuffle = (a) => { const r = [...a]; for (let i = r.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [r[i], r[j]] = [r[j], r[i]]; } return r; };
-// Xáo thứ tự đáp án mỗi lượt chơi để không đoán theo vị trí
 const makeDeck = () => GAME_DATA.map((q) => ({ ...q, options: shuffle(q.options).map((o, i) => ({ ...o, id: 'ABCD'[i] })) }));
+
 const speak = (t) => {
   if (!('speechSynthesis' in window)) return;
   const u = new SpeechSynthesisUtterance(t.replace(/[「」（）()～]/g, '')); u.lang = 'ja-JP'; u.rate = 0.9;
   speechSynthesis.cancel(); speechSynthesis.speak(u);
 };
+
+// Hàm tạo âm thanh Đúng/Sai không cần file MP3 (Dùng Web Audio API)
+const playSound = (isCorrect) => {
+  if (!window.AudioContext && !window.webkitAudioContext) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    if (isCorrect) {
+      // Âm thanh Ting Ting (Đúng)
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.3);
+    } else {
+      // Âm thanh Buzzer (Sai)
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(250, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.2);
+    }
+  } catch (e) { console.log(e); }
+};
+
 const btn = 'font-bold rounded-2xl flex items-center justify-center gap-2 transition-colors';
 
 const Toggle = ({ label, on, set }) => (
@@ -34,23 +68,38 @@ const Shell = ({ title, onBack, children }) => (
   </div>
 );
 
-// Thẻ từ vựng: [Hán Việt / Mục, Từ, Cách đọc, Nghĩa]
+// GIAO DIỆN THẺ HỌC (FLASHCARD)
 const VocabCard = ({ w, hide }) => {
-  const [open, setOpen] = useState(false);
+  const [flipped, setFlipped] = useState(!hide);
+  useEffect(() => { setFlipped(!hide); }, [hide]);
   const [hv, kanji, kana, vi] = w;
-  const covered = hide && !open;
   const say = (kana || kanji).split(/[・／]/)[0];
+  
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm border border-pink-100 flex flex-col gap-1">
+    <div 
+      onClick={() => hide && setFlipped(!flipped)}
+      className={`bg-white rounded-2xl p-5 shadow-sm border-2 border-pink-100 flex flex-col transition-all duration-300 ${hide ? 'cursor-pointer hover:shadow-md hover:-translate-y-1 active:scale-95' : ''}`}
+    >
       <div className="flex items-start justify-between gap-2">
-        <div className="jp text-3xl font-bold text-gray-800 leading-tight">{kanji}</div>
-        <button onClick={() => speak(say)} aria-label={`Nghe ${say}`} className="p-2 rounded-full bg-pink-100 text-pink-600 hover:bg-pink-200 shrink-0"><Volume2 size={18} /></button>
+        <div className="jp text-3xl font-bold text-gray-800">{kanji}</div>
+        <button onClick={(e) => { e.stopPropagation(); speak(say); }} aria-label={`Nghe ${say}`} className="p-2 rounded-full bg-pink-50 text-pink-600 hover:bg-pink-100 shrink-0">
+          <Volume2 size={20} />
+        </button>
       </div>
-      {kana && <div className="jp text-pink-500 font-semibold">{kana}</div>}
-      <button onClick={() => setOpen(!open)} className={`text-left transition ${covered ? 'blur-sm select-none' : ''}`} aria-label={covered ? 'Hiện nghĩa' : 'Nghĩa của từ'}>
-        {hv && <span className="inline-block bg-amber-100 text-pastel-brown text-xs font-bold px-2 py-0.5 rounded-full mb-1">{hv}</span>}
-        <div className="text-sm text-gray-600">{vi}</div>
-      </button>
+      
+      {/* Mặt sau của Flashcard */}
+      <div className={`transition-all duration-300 origin-top ${!flipped ? 'opacity-0 h-0 scale-y-0 overflow-hidden' : 'opacity-100 h-auto scale-y-100 mt-2'}`}>
+        <div className="w-full h-px bg-pink-50 mb-3"></div>
+        {kana && <div className="jp text-pink-500 font-semibold text-lg mb-1">{kana}</div>}
+        {hv && <span className="inline-block bg-amber-100 text-pastel-brown text-xs font-bold px-2 py-0.5 rounded-full mb-2">{hv}</span>}
+        <div className="text-gray-600 font-medium">{vi}</div>
+      </div>
+
+      {!flipped && (
+        <div className="text-center text-gray-400 text-sm mt-3 pt-3 border-t border-dashed border-gray-200 italic animate-pulse">
+          👆 Chạm để lật thẻ
+        </div>
+      )}
     </div>
   );
 };
@@ -66,23 +115,33 @@ export default function App() {
   const [high, setHigh] = useState(() => store.get('japaneseGameHighScore', 0));
   const [sound, setSound] = useState(() => store.get('jp_sound', true));
   const [showVi, setShowVi] = useState(() => store.get('jp_showVi', true));
+  
+  // Trạng thái cho phần Từ Vựng
   const [unit, setUnit] = useState(0);
   const [vtab, setVtab] = useState('lesson');
   const units = vtab === 'kanji' ? VOCAB_UNITS : VOCAB_LESSONS;
-  const switchTab = (t) => { setVtab(t); setUnit(0); };
+  const switchTab = (t) => { setVtab(t); setUnit(0); setHide(false); };
   const [hide, setHide] = useState(false);
 
   const q = deck[i];
   const home = () => setScreen('start');
-  useEffect(() => { if (screen === 'play' && sound) speak(q.dialogue); }, [screen, i]); // eslint-disable-line
+  useEffect(() => { if (screen === 'play' && sound) speak(q.dialogue); }, [screen, i]);
 
   const start = () => { setDeck(makeDeck()); setI(0); setScore(0); setCombo(0); setPicked(null); setWrong([]); setScreen('play'); };
+  
   const choose = (o) => {
     if (picked) return;
     setPicked(o);
-    if (o.isCorrect) { setScore((s) => s + 100 + combo * 10); setCombo((c) => c + 1); }
-    else { setCombo(0); setWrong((w) => [...w, { q, o }]); }
+    playSound(o.isCorrect); // Gọi âm thanh tại đây
+    if (o.isCorrect) { 
+      setScore((s) => s + 100 + combo * 10); 
+      setCombo((c) => c + 1); 
+    } else { 
+      setCombo(0); 
+      setWrong((w) => [...w, { q, o }]); 
+    }
   };
+
   const next = () => {
     if (i < deck.length - 1) { setI(i + 1); setPicked(null); return; }
     if (score > high) { setHigh(score); store.set('japaneseGameHighScore', score); }
@@ -90,21 +149,23 @@ export default function App() {
   };
   const setS = (k, fn) => (v) => { fn(v); store.set(k, v); };
 
-    // --- TỪ VỰNG ---
+  // --- TỪ VỰNG & KANJI FLASHCARD ---
   if (screen === 'vocab') return (
-    <Shell title="Từ vựng" onBack={home}>
+    <Shell title="Thẻ Học Tiếng Nhật" onBack={home}>
       <div className="flex gap-2 mb-3">
-        {[['lesson', 'Từ vựng bài'], ['kanji', 'Hán tự']].map(([k, label]) => (
-          <button key={k} onClick={() => switchTab(k)} className={`${btn} px-5 py-2 text-sm ${vtab === k ? 'bg-gray-800 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}>{label}</button>
+        {[['lesson', 'Từ vựng theo bài'], ['kanji', 'Hán tự Kanji']].map(([k, label]) => (
+          <button key={k} onClick={() => switchTab(k)} className={`${btn} px-5 py-2.5 text-sm ${vtab === k ? 'bg-gray-800 text-white shadow-md' : 'bg-white text-gray-700 border border-gray-200'}`}>{label}</button>
         ))}
       </div>
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        {units.map((u, n) => (
-          <button key={u.unit} onClick={() => setUnit(n)} className={`${btn} px-4 py-2 text-sm ${unit === n ? 'bg-pink-400 text-white' : 'bg-white text-pink-600 border border-pink-100'}`}>{u.unit} ({u.words.length})</button>
-        ))}
-        <button onClick={() => setHide(!hide)} aria-pressed={hide} className={`${btn} px-4 py-2 text-sm ml-auto ${hide ? 'bg-gray-800 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}>{hide ? 'Đang ẩn nghĩa' : 'Ẩn nghĩa để tự kiểm tra'}</button>
+        <div className="flex gap-2 overflow-x-auto pb-1 max-w-[60%] hide-scrollbar">
+          {units.map((u, n) => (
+            <button key={u.unit} onClick={() => setUnit(n)} className={`${btn} px-4 py-2 text-sm whitespace-nowrap ${unit === n ? 'bg-pink-400 text-white shadow-md' : 'bg-white text-pink-600 border border-pink-100'}`}>{u.unit} ({u.words.length})</button>
+          ))}
+        </div>
+        <button onClick={() => setHide(!hide)} aria-pressed={hide} className={`${btn} px-4 py-2 text-sm ml-auto ${hide ? 'bg-green-500 text-white shadow-md' : 'bg-white text-gray-700 border border-gray-200'}`}>{hide ? 'Mở lại tất cả' : 'Bật chế độ lật thẻ'}</button>
       </div>
-      <div className="grid sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {units[unit].words.map((w, n) => <VocabCard key={vtab + unit + n} w={w} hide={hide} />)}
       </div>
     </Shell>
@@ -113,10 +174,11 @@ export default function App() {
   // --- CÀI ĐẶT ---
   if (screen === 'settings') return (
     <Shell title="Cài đặt" onBack={home}>
-      <div className="flex flex-col gap-3 max-w-md">
+      <div className="flex flex-col gap-3 max-w-md bg-white p-6 rounded-3xl shadow-sm border border-pink-100">
         <Toggle label="Tự động đọc câu thoại" on={sound} set={setS('jp_sound', setSound)} />
         <Toggle label="Hiện bản dịch tiếng Việt" on={showVi} set={setS('jp_showVi', setShowVi)} />
-        <button onClick={() => { setHigh(0); store.set('japaneseGameHighScore', 0); }} className={`${btn} bg-gray-100 hover:bg-gray-200 text-gray-700 py-3`}>Xóa kỷ lục ({high})</button>
+        <div className="h-px w-full bg-gray-100 my-2"></div>
+        <button onClick={() => { setHigh(0); store.set('japaneseGameHighScore', 0); }} className={`${btn} bg-gray-100 hover:bg-red-50 hover:text-red-500 text-gray-700 py-3`}>Xóa kỷ lục hiện tại ({high})</button>
       </div>
     </Shell>
   );
@@ -136,7 +198,7 @@ export default function App() {
           <div className="flex flex-col gap-4">
             <button onClick={start} className={`${btn} w-full bg-pink-400 hover:bg-pink-500 text-white py-4 shadow-lg shadow-pink-200`}><Play fill="currentColor" /> Bắt đầu ngay</button>
             <div className="grid grid-cols-2 gap-4">
-              <button onClick={() => setScreen('vocab')} className={`${btn} bg-pastel-beige hover:bg-amber-100 text-pastel-brown py-3`}><BookOpen size={18} /> Từ vựng</button>
+              <button onClick={() => setScreen('vocab')} className={`${btn} bg-pastel-beige hover:bg-amber-100 text-pastel-brown py-3`}><BookOpen size={18} /> Thẻ học</button>
               <button onClick={() => setScreen('settings')} className={`${btn} bg-pastel-beige hover:bg-amber-100 text-pastel-brown py-3`}><Settings size={18} /> Cài đặt</button>
             </div>
           </div>
@@ -166,11 +228,11 @@ export default function App() {
           {wrong.length > 0 && (
             <div className="text-left mb-6">
               <h3 className="font-bold text-gray-700 mb-2">Cần ôn lại ({wrong.length})</h3>
-              <ul className="space-y-2 max-h-40 overflow-y-auto">
+              <ul className="space-y-2 max-h-48 overflow-y-auto pr-1">
                 {wrong.map(({ q: w, o }) => (
-                  <li key={w.id} className="text-sm bg-red-50 rounded-xl p-3">
-                    <div className="text-gray-500">{w.situation}</div>
-                    <div className="jp text-red-500 line-through">{o.text}</div>
+                  <li key={w.id} className="text-sm bg-red-50 rounded-xl p-3 border border-red-100">
+                    <div className="text-gray-500 mb-1">{w.situation}</div>
+                    <div className="jp text-red-500 line-through mb-1 opacity-70">{o.text}</div>
                     <div className="jp text-green-600 font-bold">{w.options.find((x) => x.isCorrect).text}</div>
                   </li>))}
               </ul>
@@ -198,7 +260,7 @@ export default function App() {
             </div>
             <div className="bg-white/90 px-3 py-1 rounded-full text-sm font-bold text-gray-600">{i + 1} / {deck.length}</div>
           </div>
-          <div className="mt-3 h-2 bg-white/40 rounded-full overflow-hidden"><div className="h-full bg-pink-400 transition-all" style={{ width: `${((i + (picked ? 1 : 0)) / deck.length) * 100}%` }} /></div>
+          <div className="mt-3 h-2 bg-white/40 rounded-full overflow-hidden"><div className="h-full bg-pink-400 transition-all duration-500" style={{ width: `${((i + (picked ? 1 : 0)) / deck.length) * 100}%` }} /></div>
         </div>
 
         <div className="flex-1 relative min-h-[220px] overflow-hidden bg-pink-50">
@@ -210,7 +272,7 @@ export default function App() {
         <div className="w-full z-30 flex flex-col bg-white relative max-h-[58%] sm:max-h-[55%]">
           <div className="mx-4 -mt-10 mb-3 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border-2 border-pink-200 p-5 relative z-40">
             <div className="absolute -top-4 left-4 bg-pink-500 text-white px-5 py-1 rounded-full font-bold text-sm shadow-md">{q.speaker}</div>
-            <button onClick={() => speak(q.dialogue)} aria-label="Nghe lại câu thoại" className="absolute top-3 right-3 p-2 rounded-full bg-pink-100 text-pink-600 hover:bg-pink-200"><Volume2 size={18} /></button>
+            <button onClick={() => speak(q.dialogue)} aria-label="Nghe lại câu thoại" className="absolute top-3 right-3 p-2 rounded-full bg-pink-50 text-pink-500 hover:bg-pink-100"><Volume2 size={18} /></button>
             <p className="jp text-xl font-bold text-gray-800 mt-2 mb-1 tracking-wide pr-10">{q.dialogue}</p>
             {showVi && <p className="text-gray-500 text-sm italic">{q.translate}</p>}
           </div>
@@ -218,7 +280,7 @@ export default function App() {
             {!picked ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {q.options.map((o) => (
-                  <button key={o.id} onClick={() => choose(o)} className="text-left bg-pastel-beige hover:bg-pink-100 border-2 border-transparent hover:border-pink-300 focus-visible:border-pink-400 outline-none p-4 rounded-xl font-semibold text-gray-700 transition-all flex items-center shadow-sm">
+                  <button key={o.id} onClick={() => choose(o)} className="text-left bg-pastel-beige hover:bg-pink-100 border-2 border-transparent hover:border-pink-300 focus-visible:border-pink-400 outline-none p-4 rounded-xl font-semibold text-gray-700 transition-all flex items-center shadow-sm hover:-translate-y-0.5">
                     <span className="bg-white text-pink-500 w-8 h-8 rounded-lg flex items-center justify-center mr-3 shadow-sm font-bold shrink-0">{o.id}</span>
                     <span className="jp text-[15px] leading-tight">{o.text}</span>
                   </button>))}
@@ -234,7 +296,7 @@ export default function App() {
                   <p className="text-pink-600 font-bold text-sm bg-pink-50 p-2 rounded-lg inline-block border border-pink-100">{whoLabel(m.who)}: {q.reaction}</p>
                 </div>
                 <div className="flex gap-3">
-                  <button onClick={() => speak(q.options.find((x) => x.isCorrect).text)} className={`${btn} bg-pink-100 hover:bg-pink-200 text-pink-600 px-4`} aria-label="Nghe đáp án đúng"><Volume2 size={20} /></button>
+                  <button onClick={() => speak(q.options.find((x) => x.isCorrect).text)} className={`${btn} bg-pink-50 hover:bg-pink-100 text-pink-500 px-4`} aria-label="Nghe đáp án đúng"><Volume2 size={20} /></button>
                   <button onClick={next} className={`${btn} flex-1 bg-gray-800 hover:bg-black text-white py-3.5 shadow-md`}>{i < deck.length - 1 ? 'Tiếp tục' : 'Xem kết quả'} <ChevronRight size={20} /></button>
                 </div>
               </div>)}
