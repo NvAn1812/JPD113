@@ -1,176 +1,68 @@
-export const GAME_DATA = [
-    {
-        id: 1,
-        situation: "Đến trước cửa nhà",
-        speaker: "Người yêu",
-        dialogue: "「いらっしゃい！今日は来てくれてありがとう。」",
-        translate: "Chào mừng em/anh! Cảm ơn vì hôm nay đã đến.",
-        options: [
-            { id: "A", text: "おじゃまします。", isCorrect: true },
-            { id: "B", text: "いただきます。", isCorrect: false },
-            { id: "C", text: "おやすみなさい。", isCorrect: false },
-            { id: "D", text: "いってきます。", isCorrect: false }
-        ],
-        explanation: "おじゃまします (Ojama shimasu): Xin phép làm phiền khi bước vào nhà người khác. Đây là câu chào bắt buộc khi vào nhà người Nhật.",
-        reaction: "笑顔 (Cười tươi): 「どうぞ、入って！」"
-    },
-    {
-        id: 2,
-        situation: "Cởi giày khi bước vào",
-        speaker: "Người yêu",
-        dialogue: "「靴はここで脱いでね。」",
-        translate: "Em/anh cởi giày ở đây nhé.",
-        options: [
-            { id: "A", text: "はい、お邪魔します。", isCorrect: false },
-            { id: "B", text: "はい、失礼します。", isCorrect: true },
-            { id: "C", text: "ごめんください。", isCorrect: false },
-            { id: "D", text: "おかえりなさい。", isCorrect: false }
-        ],
-        explanation: "失礼します (Shitsurei shimasu): Xin thất lễ. Dùng khi thực hiện một hành động bước vào không gian của người khác hoặc khi được yêu cầu làm gì đó.",
-        reaction: "「スリッパ、どうぞ！」 (Mời dùng dép đi trong nhà)"
-    },
-    {
-        id: 3,
-        situation: "Gặp mẹ người yêu",
-        speaker: "Mẹ người yêu",
-        dialogue: "「はじめまして。よく来ましたね。」",
-        translate: "Chào cháu. Rất vui vì cháu đã đến chơi.",
-        options: [
-            { id: "A", text: "お元気ですか。", isCorrect: false },
-            { id: "B", text: "はじめまして。よろしくお願いします。", isCorrect: true },
-            { id: "C", text: "ごちそうさまでした。", isCorrect: false },
-            { id: "D", text: "こんばんは。", isCorrect: false }
-        ],
-        explanation: "はじめまして。よろしくお願いします: Rất vui được gặp bác, mong bác giúp đỡ. Đây là câu chào chuẩn mực và lịch sự nhất khi gặp phụ huynh lần đầu.",
-        reaction: "微笑む (Mỉm cười): 「丁寧な子ね。どうぞ座って。」"
-    },
-    {
-        id: 4,
-        situation: "Được mời uống trà",
-        speaker: "Người yêu",
-        dialogue: "「お茶を飲みますか？」",
-        translate: "Em/anh có muốn uống trà không?",
-        options: [
-            { id: "A", text: "いいえ、食べます。", isCorrect: false },
-            { id: "B", text: "はい、お願いします。", isCorrect: true },
-            { id: "C", text: "お茶を見ます。", isCorrect: false },
-            { id: "D", text: "また明日。", isCorrect: false }
-        ],
-        explanation: "はい、お願いします (Hai, onegaishimasu): Vâng, làm phiền anh/chị. Dùng để đồng ý nhận sự tiếp đãi một cách lịch sự.",
-        reaction: "「はい、どうぞ。熱いから気をつけてね。」"
-    },
-    {
-        id: 5,
-        situation: "Chuẩn bị ăn tối",
-        speaker: "Bố người yêu",
-        dialogue: "「さあ、夕ご飯にしましょう。たくさん食べてね。」",
-        translate: "Nào, chúng ta ăn tối thôi. Cháu ăn nhiều vào nhé.",
-        options: [
-            { id: "A", text: "いただきます。", isCorrect: true },
-            { id: "B", text: "ごちそうさまでした。", isCorrect: false },
-            { id: "C", text: "いってらっしゃい。", isCorrect: false },
-            { id: "D", text: "おやすみ。", isCorrect: false }
-        ],
-        explanation: "いただきます (Itadakimasu): Mời mọi người dùng bữa / Xin phép nhận bữa ăn này. Thể hiện sự biết ơn trước khi ăn.",
-        reaction: "家族全員: 「いただきます！」"
-    },
-    {
-        id: 6,
-        situation: "Trò chuyện khi ăn: Khen món ăn",
-        speaker: "Mẹ người yêu",
-        dialogue: "「料理はお口に合いますか？」",
-        translate: "Thức ăn có vừa miệng cháu không?",
-        options: [
-            { id: "A", text: "はい、とても美しいです。", isCorrect: false },
-            { id: "B", text: "はい、とても美味しいです。", isCorrect: true },
-            { id: "C", text: "いいえ、好きじゃないです。", isCorrect: false },
-            { id: "D", text: "たぶん美味しいです。", isCorrect: false }
-        ],
-        explanation: "とても美味しいです (Totemo oishii desu): Rất ngon ạ. Việc khen món ăn do chủ nhà nấu là phép lịch sự cơ bản.",
-        reaction: "嬉しそう (Vui vẻ): 「よかった！たくさん作ったからね。」"
-    },
-    {
-        id: 7,
-        situation: "Xin phép sử dụng nhà vệ sinh",
-        speaker: "Người chơi (Bạn)",
-        dialogue: "（お手洗いに行きたい…なんて言う？）",
-        translate: "(Bạn muốn đi vệ sinh... nên nói thế nào?)",
-        options: [
-            { id: "A", text: "トイレはどこだ。", isCorrect: false },
-            { id: "B", text: "トイレに行け。", isCorrect: false },
-            { id: "C", text: "トイレを見ます。", isCorrect: false },
-            { id: "D", text: "お手洗いをお借りしてもいいですか。", isCorrect: true }
-        ],
-        explanation: "お手洗いをお借りしてもいいですか (Otearai wo okari shite mo ii desu ka): Cháu có thể mượn nhà vệ sinh được không ạ? Dùng từ お手洗い thay vì トイレ sẽ lịch sự hơn nhiều.",
-        reaction: "「もちろん。廊下の突き当たりだよ。」"
-    },
-    {
-        id: 8,
-        situation: "Trò chuyện: Hỏi về sở thích",
-        speaker: "Bố người yêu",
-        dialogue: "「休みの日はいつも何をしていますか？」",
-        translate: "Ngày nghỉ cháu thường làm gì?",
-        options: [
-            { id: "A", text: "映画を見たり、本を読んだりしています。", isCorrect: true },
-            { id: "B", text: "明日は休みです。", isCorrect: false },
-            { id: "C", text: "はい、休んでいます。", isCorrect: false },
-            { id: "D", text: "昨日は映画を見ました。", isCorrect: false }
-        ],
-        explanation: "〜たり、〜たりしています: Cấu trúc liệt kê hành động. (Cháu thường xem phim, đọc sách...)",
-        reaction: "「へえ、いい趣味だね！」"
-    },
-    {
-        id: 9,
-        situation: "Kết thúc bữa ăn",
-        speaker: "Người chơi (Bạn)",
-        dialogue: "（食事が終わった。挨拶をしよう。）",
-        translate: "(Bữa ăn đã kết thúc. Hãy chào cảm ơn.)",
-        options: [
-            { id: "A", text: "いただきます。", isCorrect: false },
-            { id: "B", text: "ごちそうさまでした。", isCorrect: true },
-            { id: "C", text: "ありがとうございました。", isCorrect: false },
-            { id: "D", text: "さようなら。", isCorrect: false }
-        ],
-        explanation: "ごちそうさまでした (Gochisousama deshita): Cảm ơn vì bữa ăn ngon. Bắt buộc nói sau khi ăn xong để cảm ơn người đã chuẩn bị.",
-        reaction: "「お粗末様でした。」 (Không có chi đâu)"
-    },
-    {
-        id: 10,
-        situation: "Chào tạm biệt và ra về",
-        speaker: "Gia đình người yêu",
-        dialogue: "「今日は来てくれてありがとう。また遊びに来てね。」",
-        translate: "Cảm ơn cháu hôm nay đã đến. Hôm sau lại tới chơi nhé.",
-        options: [
-            { id: "A", text: "ただいま。また来ます。", isCorrect: false },
-            { id: "B", text: "いってきます。", isCorrect: false },
-            { id: "C", text: "本日はお邪魔しました。また伺います。", isCorrect: true },
-            { id: "D", text: "どういたしまして。", isCorrect: false }
-        ],
-        explanation: "お邪魔しました (Ojama shimashita): Cháu đã làm phiền mọi người rồi (thì quá khứ của ojama shimasu). また伺います (Mata ukagaimasu): Cháu sẽ lại đến thăm ạ (khiêm nhường ngữ).",
-        reaction: "「気をつけて帰ってね。バイバイ！」"
-    }
-];
-
-// Mỗi câu: bối cảnh (scene) + nhân vật đang nói (who)
-export const META = {
-    1: { scene: 'genkan', who: 'partner' }, 2: { scene: 'genkan', who: 'partner' },
-    3: { scene: 'living', who: 'mother' }, 4: { scene: 'living', who: 'partner' },
-    5: { scene: 'dining', who: 'father' }, 6: { scene: 'dining', who: 'mother' },
-    7: { scene: 'hall', who: 'partner' }, 8: { scene: 'dining', who: 'father' },
-    9: { scene: 'dining', who: 'mother' }, 10: { scene: 'genkan', who: 'partner' },
-};
-
-export const VOCAB = [
-    { ic: '🚪', jp: 'おじゃまします', rd: 'ojama shimasu', vi: 'Xin phép làm phiền (khi vào nhà)' },
-    { ic: '👟', jp: '靴', rd: 'kutsu', vi: 'Giày' },
-    { ic: '🩴', jp: 'スリッパ', rd: 'surippa', vi: 'Dép đi trong nhà' },
-    { ic: '🤝', jp: 'はじめまして', rd: 'hajimemashite', vi: 'Rất vui được gặp lần đầu' },
-    { ic: '🍵', jp: 'お茶', rd: 'ocha', vi: 'Trà' },
-    { ic: '🍚', jp: 'いただきます', rd: 'itadakimasu', vi: 'Xin phép dùng bữa' },
-    { ic: '😋', jp: '美味しい', rd: 'oishii', vi: 'Ngon' },
-    { ic: '🙏', jp: 'ごちそうさまでした', rd: 'gochisousama deshita', vi: 'Cảm ơn vì bữa ăn' },
-    { ic: '🚻', jp: 'お手洗い', rd: 'otearai', vi: 'Nhà vệ sinh (lịch sự)' },
-    { ic: '🎬', jp: '映画', rd: 'eiga', vi: 'Phim' },
-    { ic: '📖', jp: '本', rd: 'hon', vi: 'Sách' },
-    { ic: '👋', jp: 'お邪魔しました', rd: 'ojama shimashita', vi: 'Cảm ơn đã tiếp đón (khi ra về)' },
+export const VOCAB_UNITS = [
+  { unit: 'Unit 1', words: [
+    ['TƯ', '私', 'わたし', 'tôi'],
+    ['NHÂN', '人', 'ひと', 'con người'],
+    ['TAM NHÂN', '三人', 'さんにん', '3 người'],
+    ['NHÂN', 'タイ人', 'タイじん', 'người Thái'],
+    ['NHẤT TÀI', '一才', 'いっさい', '1 tuổi'],
+    ['TÀI', '二十五才', 'にじゅうごさい', '25 tuổi'],
+    ['ĐẠI HỌC', '大学', 'だいがく', 'đại học'],
+    ['ĐẠI HỌC SINH', '大学生', 'だいがくせい', 'sinh viên đại học'],
+    ['TIÊN SINH', '先生', 'せんせい', 'giáo viên'],
+    ['HỌC SINH', '学生', 'がくせい', 'học sinh'],
+    ['HỌC HIỆU', '学校', 'がっこう', 'trường học'],
+    ['NHẬT', '日', 'ひ', 'mặt trời / ngày'],
+    ['TAM NHẬT', '三日', 'みっか', 'ngày 3'],
+    ['BẢN', '本', 'ほん', 'sách'],
+    ['NHẬT BẢN', '日本', 'にほん', 'Nhật Bản'],
+    ['NHẬT BẢN NHÂN', '日本人', 'にほんじん', 'người Nhật Bản'],
+    ['NHẬT BẢN NGỮ', '日本語', 'にほんご', 'tiếng Nhật'],
+    ['NGỮ', 'ベトナム語', 'ベトナムご', 'tiếng Việt'],
+    ['NHẬT BẢN NGỮ HỌC HIỆU', '日本語学校', 'にほんごがっこう', 'trường Nhật ngữ'],
+  ] },
+  { unit: 'Unit 2', words: [
+    ['NHẤT', '一', 'いち', '1'], ['NHẤT NGUYỆT', '一月', 'いちがつ', 'tháng 1'],
+    ['NHẤT NHẬT', '一日', 'ついたち・いちにち', 'ngày 1 / 1 ngày'], ['NHẤT NHÂN', '一人', 'ひとり', '1 người'],
+    ['NHỊ', '二', 'に', '2'], ['NHỊ NGUYỆT', '二月', 'にがつ', 'tháng 2'],
+    ['NHỊ NHẬT', '二日', 'ふつか', 'ngày 2'], ['NHỊ NHÂN', '二人', 'ふたり', '2 người'],
+    ['TAM', '三', 'さん', '3'], ['TAM NGUYỆT', '三月', 'さんがつ', 'tháng 3'],
+    ['TAM NHẬT', '三日', 'みっか', 'ngày 3'], ['TAM NHÂN', '三人', 'さんにん', '3 người'],
+    ['TỨ', '四', 'よん', '4'], ['TỨ NGUYỆT', '四月', 'しがつ', 'tháng 4'],
+    ['TỨ NHẬT', '四日', 'よっか', 'ngày 4'], ['TỨ NHÂN', '四人', 'よにん', '4 người'],
+    ['NGŨ', '五', 'ご', '5'], ['NGŨ NGUYỆT', '五月', 'ごがつ', 'tháng 5'],
+    ['NGŨ NHẬT', '五日', 'いつか', 'ngày 5'], ['NGŨ NHÂN', '五人', 'ごにん', '5 người'],
+    ['LỤC', '六', 'ろく', '6'], ['LỤC NGUYỆT', '六月', 'ろくがつ', 'tháng 6'],
+    ['LỤC NHẬT', '六日', 'むいか', 'ngày 6'], ['LỤC NHÂN', '六人', 'ろくにん', '6 người'],
+    ['THẤT', '七', 'なな・しち', '7'], ['THẤT NGUYỆT', '七月', 'しちがつ', 'tháng 7'],
+    ['THẤT NHẬT', '七日', 'なのか', 'ngày 7'], ['THẤT NHÂN', '七人', 'ななにん', '7 người'],
+    ['BÁT', '八', 'はち', '8'], ['BÁT NGUYỆT', '八月', 'はちがつ', 'tháng 8'],
+    ['BÁT NHẬT', '八日', 'ようか', 'ngày 8'], ['BÁT NHÂN', '八人', 'はちにん', '8 người'],
+    ['CỬU', '九', 'きゅう', '9'], ['CỬU NGUYỆT', '九月', 'きゅうがつ', 'tháng 9'],
+    ['CỬU NHẬT', '九日', 'ここのか', 'ngày 9'], ['CỬU NHÂN', '九人', 'きゅうにん', '9 người'],
+    ['THẬP', '十', 'じゅう', '10'], ['THẬP NGUYỆT', '十月', 'じゅうがつ', 'tháng 10'],
+    ['THẬP NHẬT', '十日', 'とおか', 'ngày 10'], ['THẬP NHÂN', '十人', 'じゅうにん', '10 người'],
+    ['BÁCH', '百', 'ひゃく', 'trăm'], ['TAM BÁCH', '三百', 'さんびゃく', '300'],
+    ['LỤC BÁCH', '六百', 'ろっぴゃく', '600'], ['THIÊN', '千', 'せん', 'nghìn'],
+    ['NHẤT THIÊN VIÊN', '一千円', 'いっせんえん', '1 nghìn Yên'],
+    ['NHẤT VẠN VIÊN', '一万円', 'いちまんえん', '1 vạn (10.000) Yên'],
+    ['BÁCH VẠN VIÊN', '百万円', 'ひゃくまんえん', '1 triệu Yên'],
+  ] },
+  { unit: 'Unit 3', words: [
+    ['NGUYỆT', '月', 'つき', 'mặt trăng'], ['NGUYỆT DIỆU NHẬT', '月曜日', 'げつようび', 'thứ 2'],
+    ['HỎA', '火', 'ひ', 'lửa'], ['HỎA DIỆU NHẬT', '火曜日', 'かようび', 'thứ 3'],
+    ['THỦY', '水', 'みず', 'nước'], ['THỦY DIỆU NHẬT', '水曜日', 'すいようび', 'thứ 4'],
+    ['MỘC', '木', 'き', 'cây'], ['MỘC DIỆU NHẬT', '木曜日', 'もくようび', 'thứ 5'],
+    ['KIM', 'お金', 'おかね', 'tiền'], ['KIM DIỆU NHẬT', '金曜日', 'きんようび', 'thứ 6'],
+    ['THỔ', '土', 'つち', 'đất'], ['THỔ DIỆU NHẬT', '土曜日', 'どようび', 'thứ 7'],
+    ['NHẬT DIỆU NHẬT', '日曜日', 'にちようび', 'chủ nhật'],
+    ['HÀ DIỆU NHẬT', '何曜日', 'なんようび', 'thứ mấy'],
+    ['HÀ NGUYỆT', '何月', 'なんがつ', 'tháng mấy'], ['HÀ NHẬT', '何日', 'なんにち', 'ngày mấy'],
+    ['HÀ NIÊN', '何年', 'なんねん', 'năm mấy'], ['HÀ NIÊN SINH', '何年生', 'なんねんせい', 'sinh viên năm mấy'],
+    ['HÀ TÀI', '何才', 'なんさい', 'mấy tuổi'], ['NHẤT NIÊN', '一年', 'いちねん', '1 năm'],
+    ['TỨ NIÊN', '四年', 'よねん', '4 năm'], ['SINH NIÊN NGUYỆT NHẬT', '生年月日', 'せいねんがっぴ', 'ngày tháng năm sinh'],
+    ['HÀ THỜI', '何時', 'なんじ', 'mấy giờ'], ['TỨ THỜI', '四時', 'よじ', '4 giờ'],
+    ['THỜI GIAN', '時間', 'じかん', 'thời gian'], ['NHÂN GIAN', '人間', 'にんげん', 'nhân loại'],
+    ['TAM PHÂN', '三分', 'さんぷん', '3 phút'], ['HÀ PHÂN', '何分', 'なんぷん', 'mấy phút'],
+    ['PHÂN', '分かります', 'わかります', 'hiểu'],
+  ] },
 ];

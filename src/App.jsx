@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Heart, Play, BookOpen, Settings, CheckCircle2, XCircle, ChevronRight, RotateCcw, Home, Award, Volume2, ArrowLeft } from 'lucide-react';
-import { GAME_DATA, META, VOCAB } from './data.js';
+import { GAME_DATA, META, VOCAB_UNITS } from './data.js';
 import { Scene, Char, whoLabel } from './art.jsx';
 
 const store = {
@@ -23,6 +23,35 @@ const Toggle = ({ label, on, set }) => (
   </button>
 );
 
+const Shell = ({ title, onBack, children }) => (
+  <div className="min-h-screen bg-pastel-pink flex flex-col items-center p-4">
+    <div className="w-full max-w-3xl">
+      <button onClick={onBack} className={`${btn} bg-white text-pink-600 px-4 py-2 mb-4 shadow-sm`}><ArrowLeft size={18} /> Trang chủ</button>
+      <h2 className="text-2xl font-extrabold text-gray-800 mb-4">{title}</h2>{children}
+    </div>
+  </div>
+);
+
+// Thẻ từ vựng: [Hán Việt, Kanji, Hiragana, Nghĩa]
+const VocabCard = ({ w, hide }) => {
+  const [open, setOpen] = useState(false);
+  const [hv, kanji, kana, vi] = w;
+  const covered = hide && !open;
+  return (
+    <div className="bg-white rounded-2xl p-4 shadow-sm border border-pink-100 flex flex-col gap-1">
+      <div className="flex items-start justify-between gap-2">
+        <div className="jp text-3xl font-bold text-gray-800 leading-tight">{kanji}</div>
+        <button onClick={() => speak(kana.split('・')[0])} aria-label={`Nghe ${kana}`} className="p-2 rounded-full bg-pink-100 text-pink-600 hover:bg-pink-200 shrink-0"><Volume2 size={18} /></button>
+      </div>
+      <div className="jp text-pink-500 font-semibold">{kana}</div>
+      <button onClick={() => setOpen(!open)} className={`text-left transition ${covered ? 'blur-sm select-none' : ''}`} aria-label={covered ? 'Hiện nghĩa' : 'Nghĩa của từ'}>
+        <span className="inline-block bg-amber-100 text-pastel-brown text-xs font-bold px-2 py-0.5 rounded-full mb-1">{hv}</span>
+        <div className="text-sm text-gray-600">{vi}</div>
+      </button>
+    </div>
+  );
+};
+
 export default function App() {
   const [screen, setScreen] = useState('start');
   const [deck, setDeck] = useState(GAME_DATA);
@@ -34,8 +63,11 @@ export default function App() {
   const [high, setHigh] = useState(() => store.get('japaneseGameHighScore', 0));
   const [sound, setSound] = useState(() => store.get('jp_sound', true));
   const [showVi, setShowVi] = useState(() => store.get('jp_showVi', true));
+  const [unit, setUnit] = useState(0);
+  const [hide, setHide] = useState(false);
 
   const q = deck[i];
+  const home = () => setScreen('start');
   useEffect(() => { if (screen === 'play' && sound) speak(q.dialogue); }, [screen, i]); // eslint-disable-line
 
   const start = () => { setDeck(makeDeck()); setI(0); setScore(0); setCombo(0); setPicked(null); setWrong([]); setScreen('play'); };
@@ -52,35 +84,24 @@ export default function App() {
   };
   const setS = (k, fn) => (v) => { fn(v); store.set(k, v); };
 
-  const Shell = ({ title, children }) => (
-    <div className="min-h-screen bg-pastel-pink flex flex-col items-center p-4">
-      <div className="w-full max-w-3xl">
-        <button onClick={() => setScreen('start')} className={`${btn} bg-white text-pink-600 px-4 py-2 mb-4 shadow-sm`}><ArrowLeft size={18} /> Trang chủ</button>
-        <h2 className="text-2xl font-extrabold text-gray-800 mb-4">{title}</h2>{children}
-      </div>
-    </div>
-  );
-
+  // --- TỪ VỰNG HÁN TỰ ---
   if (screen === 'vocab') return (
-    <Shell title="Từ vựng trong bài">
-      <div className="grid sm:grid-cols-2 gap-3">
-        {VOCAB.map((v) => (
-          <div key={v.jp} className="bg-white rounded-2xl p-4 flex items-center gap-4 shadow-sm border border-pink-100">
-            <div className="text-4xl w-16 h-16 rounded-2xl bg-pink-50 flex items-center justify-center shrink-0" aria-hidden="true">{v.ic}</div>
-            <div className="flex-1 min-w-0">
-              <div className="jp text-xl font-bold text-gray-800">{v.jp}</div>
-              <div className="text-xs text-pink-500 font-semibold">{v.rd}</div>
-              <div className="text-sm text-gray-600">{v.vi}</div>
-            </div>
-            <button onClick={() => speak(v.jp)} aria-label={`Nghe ${v.jp}`} className="p-2 rounded-full bg-pink-100 text-pink-600 hover:bg-pink-200"><Volume2 size={18} /></button>
-          </div>
+    <Shell title="Từ vựng Hán tự" onBack={home}>
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        {VOCAB_UNITS.map((u, n) => (
+          <button key={u.unit} onClick={() => setUnit(n)} className={`${btn} px-4 py-2 text-sm ${unit === n ? 'bg-pink-400 text-white' : 'bg-white text-pink-600 border border-pink-100'}`}>{u.unit} ({u.words.length})</button>
         ))}
+        <button onClick={() => setHide(!hide)} aria-pressed={hide} className={`${btn} px-4 py-2 text-sm ml-auto ${hide ? 'bg-gray-800 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}>{hide ? 'Đang ẩn nghĩa' : 'Ẩn nghĩa để tự kiểm tra'}</button>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-3">
+        {VOCAB_UNITS[unit].words.map((w) => <VocabCard key={unit + w[1] + w[2]} w={w} hide={hide} />)}
       </div>
     </Shell>
   );
 
+  // --- CÀI ĐẶT ---
   if (screen === 'settings') return (
-    <Shell title="Cài đặt">
+    <Shell title="Cài đặt" onBack={home}>
       <div className="flex flex-col gap-3 max-w-md">
         <Toggle label="Tự động đọc câu thoại" on={sound} set={setS('jp_sound', setSound)} />
         <Toggle label="Hiện bản dịch tiếng Việt" on={showVi} set={setS('jp_showVi', setShowVi)} />
@@ -89,6 +110,7 @@ export default function App() {
     </Shell>
   );
 
+  // --- MÀN HÌNH BẮT ĐẦU ---
   if (screen === 'start') return (
     <div className="min-h-screen bg-pastel-pink flex flex-col items-center justify-center p-4 relative overflow-hidden">
       <div className="absolute top-10 left-10 text-pink-300 opacity-50 animate-bounce"><Heart size={48} /></div>
@@ -112,6 +134,7 @@ export default function App() {
     </div>
   );
 
+  // --- KẾT QUẢ ---
   if (screen === 'result') {
     const acc = (deck.length - wrong.length) / deck.length;
     const r = acc === 1 ? ['S', 'text-yellow-500', 'Tuyệt vời! Gia đình người yêu rất ấn tượng về bạn!']
@@ -143,7 +166,7 @@ export default function App() {
             </div>)}
           <div className="flex gap-4">
             <button onClick={start} className={`${btn} flex-1 bg-pink-400 hover:bg-pink-500 text-white py-3`}><RotateCcw size={18} /> Chơi lại</button>
-            <button onClick={() => setScreen('start')} className={`${btn} flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3`}><Home size={18} /> Trang chủ</button>
+            <button onClick={home} className={`${btn} flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3`}><Home size={18} /> Trang chủ</button>
           </div>
         </div>
       </div>
