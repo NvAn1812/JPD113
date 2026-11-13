@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Heart, Play, BookOpen, Settings, CheckCircle2, XCircle, ChevronRight, ChevronLeft, RotateCcw, Home, Award, Volume2, ArrowLeft, Layers } from 'lucide-react';
+import { Heart, Play, BookOpen, Settings, CheckCircle2, XCircle, ChevronRight, ChevronLeft, RotateCcw, Home, Award, Volume2, ArrowLeft, Layers, PenTool } from 'lucide-react';
 import { GAME_DATA, META } from './gameData.js';
 import { VOCAB_UNITS } from './kanjiData.js';
 import { VOCAB_LESSONS } from './data.js';
 import { Scene, Char, whoLabel } from './art.jsx';
 
+// Tiện ích lưu trữ LocalStorage an toàn
 const store = {
   get: (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
   set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* bỏ qua */ } },
@@ -12,6 +13,33 @@ const store = {
 
 const shuffle = (a) => { const r = [...a]; for (let i = r.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [r[i], r[j]] = [r[j], r[i]]; } return r; };
 const makeDeck = () => GAME_DATA.map((q) => ({ ...q, options: shuffle(q.options).map((o, i) => ({ ...o, id: 'ABCD'[i] })) }));
+
+// Tạo bộ đề thi trắc nghiệm ngẫu nhiên
+const makeTestDeck = (type, unitIdx) => {
+  const source = type === 'kanji' ? VOCAB_UNITS : VOCAB_LESSONS;
+  let pool = [];
+  if (unitIdx === -1) {
+    source.forEach(u => pool.push(...u.words));
+  } else {
+    pool = [...source[unitIdx]?.words || []];
+  }
+  
+  // Lấy ngẫu nhiên tối đa 15 câu hỏi cho 1 bài thi
+  const selected = shuffle(pool).slice(0, 15);
+  const allVi = source.flatMap(u => u.words.map(w => w[3])); // Lấy tất cả nghĩa tiếng Việt làm đáp án nhiễu
+
+  return selected.map(w => {
+    const correctVi = w[3];
+    let wrongs = allVi.filter(v => v !== correctVi);
+    wrongs = shuffle(wrongs).slice(0, 3); // Chọn 3 đáp án sai ngẫu nhiên
+    const options = shuffle([
+      { text: correctVi, isCorrect: true },
+      ...wrongs.map(text => ({ text, isCorrect: false }))
+    ]).map((o, i) => ({ ...o, id: 'ABCD'[i] }));
+    
+    return { word: w, options };
+  });
+};
 
 const speak = (t) => {
   if (!('speechSynthesis' in window)) return;
@@ -53,10 +81,10 @@ const Toggle = ({ label, on, set }) => (
   </button>
 );
 
-const Shell = ({ title, onBack, children, fullWidth = false }) => (
-  <div className="min-h-screen bg-pastel-pink flex flex-col items-center p-4">
+const Shell = ({ title, onBack, children, fullWidth = false, color = 'pink' }) => (
+  <div className={`min-h-screen flex flex-col items-center p-4 ${color === 'blue' ? 'bg-blue-50' : 'bg-pastel-pink'}`}>
     <div className={`w-full ${fullWidth ? 'max-w-5xl' : 'max-w-3xl'}`}>
-      <button onClick={onBack} className={`${btn} bg-white text-pink-600 px-4 py-2 mb-4 shadow-sm`}><ArrowLeft size={18} /> Trang chủ</button>
+      <button onClick={onBack} className={`${btn} bg-white ${color === 'blue' ? 'text-blue-600' : 'text-pink-600'} px-4 py-2 mb-4 shadow-sm`}><ArrowLeft size={18} /> Trang chủ</button>
       <h2 className="text-2xl font-extrabold text-gray-800 mb-4">{title}</h2>{children}
     </div>
   </div>
@@ -79,37 +107,31 @@ const VocabListCard = ({ w }) => {
   );
 };
 
-// GIAO DIỆN FLASHCARD QUIZLET STYLE (Đã sửa lỗi mượt & bôi đen chữ)
+// GIAO DIỆN FLASHCARD QUIZLET STYLE
 const QuizletFlashcard = ({ w, onNext, onPrev, current, total }) => {
   const [flipped, setFlipped] = useState(false);
+  
+  useEffect(() => { setFlipped(false); }, [w]);
+
   const [hv, kanji, kana, vi] = w;
   const say = (kana || kanji).split(/[・／]/)[0];
 
   const handleFlip = () => {
     setFlipped(!flipped);
-    if (!flipped) {
-      // Delay nhẹ để UI xoay mượt trước, không bị giật do hàm đọc âm thanh chặn
-      setTimeout(() => speak(say), 100); 
-    }
+    if (!flipped) { setTimeout(() => speak(say), 100); }
   };
 
   return (
     <div className="flex flex-col items-center w-full max-w-4xl mx-auto mt-4 select-none">
-      
-      {/* Thẻ 3D */}
       <div className="relative w-full h-80 sm:h-96 [perspective:2000px] cursor-pointer" onClick={handleFlip}>
-        
-        {/* Dùng transition-transform để tăng tốc độ phần cứng, loại bỏ group-hover gây lỗi */}
         <div className={`relative w-full h-full transition-transform duration-700 ease-in-out [transform-style:preserve-3d] ${flipped ? '[transform:rotateY(180deg)]' : ''} shadow-md hover:shadow-xl rounded-3xl`}>
           
-          {/* Mặt trước (Chữ Nhật) */}
           <div className="absolute inset-0 [backface-visibility:hidden] bg-white rounded-3xl p-8 border-2 border-gray-100 flex flex-col items-center justify-center overflow-hidden">
             <button onClick={(e) => { e.stopPropagation(); speak(say); }} className="absolute top-4 right-4 p-3 rounded-full text-pink-500 hover:bg-pink-50 transition-colors"><Volume2 size={24} /></button>
             <div className="jp text-5xl sm:text-7xl font-bold text-gray-800 text-center leading-normal tracking-wide px-4">{kanji}</div>
             <div className="absolute bottom-6 text-gray-400 text-sm font-semibold opacity-60">👆 Chạm thẻ để lật</div>
           </div>
 
-          {/* Mặt sau (Nghĩa) */}
           <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] bg-pink-50 rounded-3xl p-8 border-2 border-pink-200 flex flex-col items-center justify-center text-center overflow-hidden">
             <button onClick={(e) => { e.stopPropagation(); speak(say); }} className="absolute top-4 right-4 p-3 rounded-full text-pink-500 hover:bg-pink-100 transition-colors"><Volume2 size={24} /></button>
             {kana && <div className="jp text-3xl sm:text-5xl text-pink-600 font-bold mb-6 leading-relaxed">{kana}</div>}
@@ -120,25 +142,10 @@ const QuizletFlashcard = ({ w, onNext, onPrev, current, total }) => {
         </div>
       </div>
 
-      {/* Cụm điều khiển (Lùi / Tới) */}
       <div className="flex items-center justify-between w-full max-w-md mt-10 gap-6">
-        <button 
-          onClick={(e) => { e.stopPropagation(); onPrev(); }} 
-          disabled={current === 0}
-          className={`p-4 rounded-full flex items-center justify-center transition-all ${current === 0 ? 'text-gray-300 bg-gray-100 cursor-not-allowed' : 'text-pink-600 bg-white shadow-md hover:bg-pink-50 hover:shadow-lg active:scale-95'}`}
-        >
-          <ChevronLeft size={28} strokeWidth={3} />
-        </button>
-
+        <button onClick={(e) => { e.stopPropagation(); onPrev(); }} disabled={current === 0} className={`p-4 rounded-full flex items-center justify-center transition-all ${current === 0 ? 'text-gray-300 bg-gray-100 cursor-not-allowed' : 'text-pink-600 bg-white shadow-md hover:bg-pink-50 hover:shadow-lg active:scale-95'}`}><ChevronLeft size={28} strokeWidth={3} /></button>
         <span className="font-bold text-gray-600 text-lg tracking-widest">{current + 1} / {total}</span>
-
-        <button 
-          onClick={(e) => { e.stopPropagation(); onNext(); }} 
-          disabled={current === total - 1}
-          className={`p-4 rounded-full flex items-center justify-center transition-all ${current === total - 1 ? 'text-gray-300 bg-gray-100 cursor-not-allowed' : 'text-pink-600 bg-white shadow-md hover:bg-pink-50 hover:shadow-lg active:scale-95'}`}
-        >
-          <ChevronRight size={28} strokeWidth={3} />
-        </button>
+        <button onClick={(e) => { e.stopPropagation(); onNext(); }} disabled={current === total - 1} className={`p-4 rounded-full flex items-center justify-center transition-all ${current === total - 1 ? 'text-gray-300 bg-gray-100 cursor-not-allowed' : 'text-pink-600 bg-white shadow-md hover:bg-pink-50 hover:shadow-lg active:scale-95'}`}><ChevronRight size={28} strokeWidth={3} /></button>
       </div>
     </div>
   );
@@ -146,6 +153,8 @@ const QuizletFlashcard = ({ w, onNext, onPrev, current, total }) => {
 
 export default function App() {
   const [screen, setScreen] = useState(() => store.get('jp_screen', 'start'));
+  
+  // Game Cốt truyện States
   const [deck, setDeck] = useState(() => store.get('jp_deck', GAME_DATA));
   const [i, setI] = useState(() => store.get('jp_i', 0));
   const [score, setScore] = useState(() => store.get('jp_score', 0));
@@ -153,27 +162,34 @@ export default function App() {
   const [picked, setPicked] = useState(() => store.get('jp_picked', null));
   const [wrong, setWrong] = useState(() => store.get('jp_wrong', []));
   const [high, setHigh] = useState(() => store.get('japaneseGameHighScore', 0));
+  
+  // Settings
   const [sound, setSound] = useState(() => store.get('jp_sound', true));
   const [showVi, setShowVi] = useState(() => store.get('jp_showVi', true));
   
+  // Từ Vựng States
   const [unit, setUnit] = useState(() => store.get('jp_unit', 0));
   const [vtab, setVtab] = useState(() => store.get('jp_vtab', 'lesson'));
   const [flashcardMode, setFlashcardMode] = useState(() => store.get('jp_flashcard', false));
   const [cardIndex, setCardIndex] = useState(() => store.get('jp_cardIndex', 0)); 
 
+  // Kiểm tra (Test) States
+  const [tDeck, setTDeck] = useState(() => store.get('jp_tDeck', []));
+  const [tIndex, setTIndex] = useState(() => store.get('jp_tIndex', 0));
+  const [tScore, setTScore] = useState(() => store.get('jp_tScore', 0));
+  const [tPicked, setTPicked] = useState(() => store.get('jp_tPicked', null));
+  const [tWrong, setTWrong] = useState(() => store.get('jp_tWrong', []));
+  const [tSetup, setTSetup] = useState(() => store.get('jp_tSetup', { type: 'lesson', unit: -1 }));
+
+  // Lưu toàn bộ tiến trình
   useEffect(() => {
-    store.set('jp_screen', screen);
-    store.set('jp_deck', deck);
-    store.set('jp_i', i);
-    store.set('jp_score', score);
-    store.set('jp_combo', combo);
-    store.set('jp_picked', picked);
-    store.set('jp_wrong', wrong);
-    store.set('jp_unit', unit);
-    store.set('jp_vtab', vtab);
-    store.set('jp_flashcard', flashcardMode);
-    store.set('jp_cardIndex', cardIndex);
-  }, [screen, deck, i, score, combo, picked, wrong, unit, vtab, flashcardMode, cardIndex]);
+    store.set('jp_screen', screen); store.set('jp_deck', deck); store.set('jp_i', i);
+    store.set('jp_score', score); store.set('jp_combo', combo); store.set('jp_picked', picked);
+    store.set('jp_wrong', wrong); store.set('jp_unit', unit); store.set('jp_vtab', vtab);
+    store.set('jp_flashcard', flashcardMode); store.set('jp_cardIndex', cardIndex);
+    store.set('jp_tDeck', tDeck); store.set('jp_tIndex', tIndex); store.set('jp_tScore', tScore);
+    store.set('jp_tPicked', tPicked); store.set('jp_tWrong', tWrong); store.set('jp_tSetup', tSetup);
+  }, [screen, deck, i, score, combo, picked, wrong, unit, vtab, flashcardMode, cardIndex, tDeck, tIndex, tScore, tPicked, tWrong, tSetup]);
 
   const units = vtab === 'kanji' ? VOCAB_UNITS : VOCAB_LESSONS;
   const switchTab = (t) => { setVtab(t); setUnit(0); setCardIndex(0); };
@@ -184,22 +200,15 @@ export default function App() {
   useEffect(() => { if (screen === 'play' && sound && !picked) speak(q.dialogue); }, [screen, i]);
 
   const start = () => { 
-    setDeck(makeDeck()); 
-    setI(0); setScore(0); setCombo(0); setPicked(null); setWrong([]); 
-    setScreen('play'); 
+    setDeck(makeDeck()); setI(0); setScore(0); setCombo(0); setPicked(null); setWrong([]); setScreen('play'); 
   };
   
   const choose = (o) => {
     if (picked) return;
     setPicked(o);
     playSound(o.isCorrect); 
-    if (o.isCorrect) { 
-      setScore((s) => s + 100 + combo * 10); 
-      setCombo((c) => c + 1); 
-    } else { 
-      setCombo(0); 
-      setWrong((w) => [...w, { q, o }]); 
-    }
+    if (o.isCorrect) { setScore((s) => s + 100 + combo * 10); setCombo((c) => c + 1); } 
+    else { setCombo(0); setWrong((w) => [...w, { q, o }]); }
   };
 
   const next = () => {
@@ -229,7 +238,6 @@ export default function App() {
       </div>
       
       {flashcardMode ? (
-        // Truyền key={cardIndex} để React xóa thẻ cũ và tạo thẻ mới ngay lập tức khi bấm Next/Prev
         <QuizletFlashcard 
           key={cardIndex} 
           w={units[unit]?.words[cardIndex]} 
@@ -246,14 +254,153 @@ export default function App() {
     </Shell>
   );
 
+  // --- MÀN HÌNH SETUP BÀI KIỂM TRA ---
+  if (screen === 'test_setup') {
+    const testSource = tSetup.type === 'kanji' ? VOCAB_UNITS : VOCAB_LESSONS;
+    return (
+      <Shell title="Cấu Hình Bài Thi" onBack={home} color="blue">
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-blue-100 flex flex-col gap-6">
+          <div>
+            <h3 className="font-bold text-gray-700 mb-3 text-lg">1. Chọn nội dung thi:</h3>
+            <div className="flex gap-3">
+              <button onClick={() => setTSetup({...tSetup, type: 'lesson', unit: -1})} className={`${btn} flex-1 py-3 ${tSetup.type === 'lesson' ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Từ vựng theo bài</button>
+              <button onClick={() => setTSetup({...tSetup, type: 'kanji', unit: -1})} className={`${btn} flex-1 py-3 ${tSetup.type === 'kanji' ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Hán tự Kanji</button>
+            </div>
+          </div>
+          <div>
+            <h3 className="font-bold text-gray-700 mb-3 text-lg">2. Chọn phạm vi bài:</h3>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => setTSetup({...tSetup, unit: -1})} className={`${btn} px-5 py-2.5 text-sm ${tSetup.unit === -1 ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Trộn tất cả</button>
+              {testSource.map((u, n) => (
+                <button key={u.unit} onClick={() => setTSetup({...tSetup, unit: n})} className={`${btn} px-5 py-2.5 text-sm ${tSetup.unit === n ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{u.unit}</button>
+              ))}
+            </div>
+          </div>
+          <div className="h-px w-full bg-gray-100 my-2"></div>
+          <button onClick={() => {
+            setTDeck(makeTestDeck(tSetup.type, tSetup.unit));
+            setTIndex(0); setTScore(0); setTWrong([]); setTPicked(null);
+            setScreen('test_play');
+          }} className={`${btn} bg-blue-500 hover:bg-blue-600 text-white py-4 mt-2 shadow-md text-lg`}>
+            Bắt đầu thi ngay!
+          </button>
+        </div>
+      </Shell>
+    );
+  }
+
+  // --- MÀN HÌNH CHƠI BÀI KIỂM TRA ---
+  if (screen === 'test_play') {
+    const tq = tDeck[tIndex];
+    if (!tq) return null;
+    const [hv, kanji, kana, vi] = tq.word;
+    const say = (kana || kanji).split(/[・／]/)[0];
+
+    return (
+      <div className="min-h-screen bg-blue-50 flex flex-col items-center p-4">
+        <div className="w-full max-w-2xl mt-2 sm:mt-10">
+           {/* Header Bài thi */}
+           <div className="flex justify-between items-center mb-6">
+              <button onClick={() => setScreen('test_setup')} className="bg-white p-2 rounded-full text-gray-700 shadow hover:bg-gray-50 transition-colors" aria-label="Thoát bài thi"><XCircle size={24}/></button>
+              <div className="bg-white px-4 py-1.5 rounded-full text-sm font-bold text-blue-600 shadow">Điểm: {tScore}</div>
+              <div className="bg-white px-4 py-1.5 rounded-full text-sm font-bold text-gray-600 shadow">{tIndex + 1} / {tDeck.length}</div>
+           </div>
+           
+           {/* Thẻ câu hỏi */}
+           <div className="bg-white rounded-3xl p-8 sm:p-12 shadow-md border-2 border-blue-100 flex flex-col items-center justify-center mb-6 relative min-h-[200px]">
+              <button onClick={() => speak(say)} className="absolute top-4 right-4 p-3 rounded-full bg-blue-50 text-blue-500 hover:bg-blue-100 transition-colors"><Volume2 size={24}/></button>
+              <div className="jp text-6xl sm:text-7xl font-bold text-gray-800 mb-4 text-center">{kanji}</div>
+              {/* Nếu thi Hán tự, hiển thị thêm âm Hán Việt để dễ nhận diện. Thi từ vựng thì hiển thị Furigana */}
+              {tSetup.type === 'kanji' ? (
+                hv && <span className="inline-block bg-amber-100 text-pastel-brown text-sm font-bold px-3 py-1 rounded-full">{hv}</span>
+              ) : (
+                kana && <div className="jp text-2xl text-blue-500 font-semibold">{kana}</div>
+              )}
+           </div>
+
+           {/* 4 Đáp án */}
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+              {tq.options.map(o => (
+                <button key={o.id} onClick={() => {
+                  if (tPicked) return;
+                  setTPicked(o);
+                  playSound(o.isCorrect);
+                  if (o.isCorrect) setTScore(s => s + 10);
+                  else setTWrong(w => [...w, tq]);
+                }} className={`text-left p-5 rounded-2xl font-bold transition-all duration-300 flex items-center shadow-sm border-2 
+                  ${!tPicked ? 'bg-white hover:border-blue-400 hover:shadow-md border-transparent text-gray-700 hover:-translate-y-1' 
+                    : o.isCorrect ? 'bg-green-100 border-green-400 text-green-700 scale-[1.02]' 
+                    : tPicked.id === o.id ? 'bg-red-100 border-red-400 text-red-700' 
+                    : 'bg-white border-transparent text-gray-400 opacity-40'}`}>
+                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center mr-4 shadow-sm shrink-0 ${!tPicked ? 'bg-blue-100 text-blue-600' : o.isCorrect ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-500'}`}>{o.id}</span>
+                  <span className="text-[16px] leading-tight">{o.text}</span>
+                </button>
+              ))}
+           </div>
+
+           {/* Nút Tiếp tục */}
+           {tPicked && (
+             <button onClick={() => {
+               if (tIndex < tDeck.length - 1) { setTIndex(tIndex + 1); setTPicked(null); }
+               else setScreen('test_result');
+             }} className={`${btn} w-full bg-blue-500 hover:bg-blue-600 text-white py-4 shadow-md text-lg animate-fade-in-up`}>
+               {tIndex < tDeck.length - 1 ? 'Câu tiếp theo' : 'Nộp bài & Xem kết quả'} <ChevronRight size={20}/>
+             </button>
+           )}
+        </div>
+      </div>
+    );
+  }
+
+  // --- KẾT QUẢ BÀI KIỂM TRA ---
+  if (screen === 'test_result') {
+    const total = tDeck.length;
+    const correct = total - tWrong.length;
+    const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
+    const rankColor = percent === 100 ? 'text-yellow-500' : percent >= 80 ? 'text-green-500' : percent >= 50 ? 'text-blue-500' : 'text-red-500';
+    
+    return (
+      <Shell title="Kết Quả Bài Thi" onBack={home} color="blue">
+        <div className="bg-white p-8 rounded-3xl shadow-xl text-center border-t-8 border-blue-500 max-w-lg mx-auto">
+          <div className="text-gray-500 font-bold mb-2">ĐỘ CHÍNH XÁC</div>
+          <div className={`text-7xl font-black ${rankColor} mb-2 animate-pop`}>{percent}%</div>
+          <p className="text-gray-600 font-bold mb-6 text-lg">Đúng {correct} trên tổng số {total} câu</p>
+          
+          <div className="bg-blue-50 rounded-2xl p-4 mb-6 flex justify-between items-center">
+            <span className="text-gray-600 font-bold">Tổng điểm:</span>
+            <span className="text-2xl font-black text-blue-600">{tScore}</span>
+          </div>
+
+          {tWrong.length > 0 && (
+            <div className="text-left mb-6">
+              <h3 className="font-bold text-gray-700 mb-3">Những từ cần ôn lại ({tWrong.length}):</h3>
+              <ul className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                {tWrong.map((w, idx) => (
+                  <li key={idx} className="bg-red-50 rounded-2xl p-4 border border-red-100 flex flex-col gap-1">
+                    <div className="jp text-xl font-bold text-gray-800">{w.word[1]} <span className="text-red-500 text-base font-normal ml-1">{w.word[2] ? `(${w.word[2]})` : ''}</span></div>
+                    <div className="text-gray-700 font-medium mt-1">Nghĩa đúng: <span className="text-green-600 font-bold">{w.word[3]}</span></div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          
+          <div className="flex gap-4">
+            <button onClick={() => setScreen('test_setup')} className={`${btn} flex-1 bg-blue-500 hover:bg-blue-600 text-white py-3.5`}><RotateCcw size={18} /> Thi lại</button>
+          </div>
+        </div>
+      </Shell>
+    );
+  }
+
   // --- CÀI ĐẶT ---
   if (screen === 'settings') return (
     <Shell title="Cài đặt" onBack={home}>
-      <div className="flex flex-col gap-3 max-w-md bg-white p-6 rounded-3xl shadow-sm border border-pink-100">
-        <Toggle label="Tự động đọc câu thoại" on={sound} set={setS('jp_sound', setSound)} />
-        <Toggle label="Hiện bản dịch tiếng Việt" on={showVi} set={setS('jp_showVi', setShowVi)} />
+      <div className="flex flex-col gap-3 max-w-md bg-white p-6 rounded-3xl shadow-sm border border-pink-100 mx-auto">
+        <Toggle label="Tự động đọc câu thoại/từ vựng" on={sound} set={setS('jp_sound', setSound)} />
+        <Toggle label="Hiện bản dịch tiếng Việt (Cốt truyện)" on={showVi} set={setS('jp_showVi', setShowVi)} />
         <div className="h-px w-full bg-gray-100 my-2"></div>
-        <button onClick={() => { setHigh(0); store.set('japaneseGameHighScore', 0); }} className={`${btn} bg-gray-100 hover:bg-red-50 hover:text-red-500 text-gray-700 py-3`}>Xóa kỷ lục hiện tại ({high})</button>
+        <button onClick={() => { setHigh(0); store.set('japaneseGameHighScore', 0); }} className={`${btn} bg-gray-100 hover:bg-red-50 hover:text-red-500 text-gray-700 py-3`}>Xóa kỷ lục cốt truyện ({high})</button>
       </div>
     </Shell>
   );
@@ -268,24 +415,28 @@ export default function App() {
         <div className="p-8">
           <div className="inline-block bg-pink-100 text-pink-600 px-4 py-1 rounded-full text-sm font-bold mb-4">日本語学習ゲーム</div>
           <h1 className="jp text-4xl font-extrabold text-gray-800 mb-2">初めて恋人の家へ</h1>
-          <h2 className="text-lg text-gray-500 mb-2 font-semibold">My First Visit to My Japanese Lover's Home</h2>
-          <p className="text-sm text-pink-500 font-bold mb-6">Kỷ lục: {high}</p>
-          <div className="flex flex-col gap-4">
-            <button onClick={start} className={`${btn} w-full bg-pink-400 hover:bg-pink-500 text-white py-4 shadow-lg shadow-pink-200`}><Play fill="currentColor" /> {score > 0 ? 'Bắt đầu ván mới' : 'Bắt đầu ngay'}</button>
+          <h2 className="text-lg text-gray-500 mb-2 font-semibold">Giao tiếp tiếng Nhật cơ bản</h2>
+          
+          <div className="flex flex-col gap-4 mt-6">
+            {score > 0 && deck.length > 0 && (
+               <button onClick={() => setScreen('play')} className={`${btn} w-full bg-green-500 hover:bg-green-600 text-white py-3 shadow-md`}>Tiếp tục màn chơi đang dở</button>
+            )}
+            <button onClick={start} className={`${btn} w-full bg-pink-400 hover:bg-pink-500 text-white py-4 shadow-lg shadow-pink-200`}><Play fill="currentColor" /> {score > 0 ? 'Chơi lại từ đầu' : 'Chơi Cốt Truyện'}</button>
+            
+            {/* Nút Làm Bài Kiểm Tra mới */}
+            <button onClick={() => setScreen('test_setup')} className={`${btn} w-full bg-blue-500 hover:bg-blue-600 text-white py-3.5 shadow-md`}><PenTool size={18} /> Thi Trắc Nghiệm</button>
+            
             <div className="grid grid-cols-2 gap-4">
               <button onClick={() => setScreen('vocab')} className={`${btn} bg-pastel-beige hover:bg-amber-100 text-pastel-brown py-3`}><BookOpen size={18} /> Thẻ học</button>
               <button onClick={() => setScreen('settings')} className={`${btn} bg-pastel-beige hover:bg-amber-100 text-pastel-brown py-3`}><Settings size={18} /> Cài đặt</button>
             </div>
-            {score > 0 && deck.length > 0 && (
-               <button onClick={() => setScreen('play')} className={`${btn} w-full bg-green-500 hover:bg-green-600 text-white py-3 shadow-md mt-2`}>Tiếp tục màn chơi đang dở</button>
-            )}
           </div>
         </div>
       </div>
     </div>
   );
 
-  // --- KẾT QUẢ ---
+  // --- KẾT QUẢ CỐT TRUYỆN ---
   if (screen === 'result') {
     const acc = (deck.length - wrong.length) / deck.length;
     const r = acc === 1 ? ['S', 'text-yellow-500', 'Tuyệt vời! Gia đình người yêu rất ấn tượng về bạn!']
@@ -324,7 +475,7 @@ export default function App() {
     );
   }
 
-  // --- MÀN HÌNH CHƠI ---
+  // --- MÀN HÌNH CHƠI CỐT TRUYỆN ---
   const m = META[q.id] || { scene: 'living', who: 'partner' };
   const mood = !picked ? 'idle' : picked.isCorrect ? 'happy' : 'sad';
   return (
